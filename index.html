@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WONGBAGUS PREDICTION – Auto Sync</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Barlow:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#080a0e;--surface:#0f1218;--surface2:#141820;--border:#1a1f2e;
+  --gold:#f5c842;--text:#dde3f0;--muted:#4a5570;
+  --green:#2ecc71;--red:#e03c3c;--blue:#3a7bff;--orange:#f97316;--purple:#c77dff;
+  --bar-h:52px;--tick-h:22px;--nav-h:58px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;overflow:hidden;-webkit-tap-highlight-color:transparent;}
+
+/* ══ TOPBAR ══ */
+#topbar{
+  position:fixed;top:0;left:0;right:0;height:var(--bar-h);
+  background:linear-gradient(180deg,#0d1119 0%,var(--surface) 100%);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 8px;gap:6px;z-index:300;
+}
+#logo{display:flex;align-items:center;gap:5px;flex-shrink:0;}
+#logo-ring{
+  width:26px;height:26px;border-radius:50%;
+  border:1.5px solid var(--gold);display:flex;align-items:center;justify-content:center;
+  position:relative;box-shadow:0 0 10px rgba(245,200,66,.2);
+}
+#logo-ring::after{
+  content:'';position:absolute;inset:-3px;border-radius:50%;
+  border:1px solid rgba(245,200,66,.12);animation:rpulse 2.2s ease-in-out infinite;
+}
+@keyframes rpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0;transform:scale(1.4)}}
+#logo-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 7px var(--gold);animation:blink 1.8s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+#logo-txt{font-family:'Oswald',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.4px;color:var(--gold);line-height:1;}
+#logo-sub{font-family:'Barlow',sans-serif;font-size:7px;color:var(--muted);letter-spacing:.6px;line-height:1;margin-top:1px;}
+#strip{flex:1;display:flex;align-items:center;gap:5px;overflow:hidden;min-width:0;}
+#clk{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);flex-shrink:0;}
+#clk b{color:var(--gold);}
+#cdbox{
+  display:flex;align-items:center;gap:3px;
+  background:rgba(245,200,66,.05);border:1px solid rgba(245,200,66,.14);
+  border-radius:5px;padding:2px 6px;flex-shrink:0;transition:all .35s;
+}
+#cdbox.urgent{background:rgba(224,60,60,.1);border-color:rgba(224,60,60,.35);animation:urg .9s ease-in-out infinite;}
+@keyframes urg{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 3px rgba(224,60,60,.12)}}
+#cdbox.urgent #cd-t,#cdbox.urgent #cd-m{color:var(--red)!important;}
+#cd-m{font-family:'Oswald',sans-serif;font-size:8px;color:var(--muted);letter-spacing:.3px;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#cd-t{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold);font-weight:700;}
+#sdot-wrap{display:flex;align-items:center;gap:3px;flex-shrink:0;}
+#sdot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);transition:all .3s;}
+#sdot.syncing{background:var(--orange);box-shadow:0 0 8px var(--orange);animation:spin .5s linear infinite;}
+#sdot.err{background:var(--red);box-shadow:0 0 6px var(--red);}
+#slbl{font-family:'Oswald',sans-serif;font-size:8px;letter-spacing:.7px;color:var(--muted);}
+@keyframes spin{to{transform:rotate(360deg)}}
+#btn-rf{
+  width:30px;height:30px;border-radius:8px;flex-shrink:0;
+  background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.18);
+  color:var(--gold);font-size:13px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;position:relative;
+}
+#btn-rf:active{transform:scale(.88);}
+#btn-rf.spinning .rfi{animation:spin .6s linear infinite;display:inline-block;}
+#rbadge{position:absolute;top:-4px;right:-4px;width:9px;height:9px;border-radius:50%;background:var(--green);border:1.5px solid var(--bg);display:none;}
+#rbadge.show{display:block;animation:pop .3s ease;}
+@keyframes pop{0%{transform:scale(0)}70%{transform:scale(1.4)}100%{transform:scale(1)}}
+
+/* ══ LIVE TICKER ══ */
+#ticker{
+  position:fixed;top:var(--bar-h);left:0;right:0;height:var(--tick-h);
+  background:rgba(245,200,66,.04);border-bottom:1px solid rgba(245,200,66,.08);
+  overflow:hidden;z-index:290;display:flex;align-items:center;
+}
+#tick-inner{display:inline-flex;align-items:center;white-space:nowrap;animation:tickscroll 80s linear infinite;will-change:transform;}
+#tick-inner:hover{animation-play-state:paused;}
+@keyframes tickscroll{0%{transform:translateX(100vw)}100%{transform:translateX(-100%)}}
+.ti{font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:.6px;padding:0 14px;color:var(--muted);display:flex;align-items:center;gap:4px;border-right:1px solid rgba(255,255,255,.04);}
+.ti b{color:var(--text);}
+.ti.live{color:var(--green);}.ti.live b{color:var(--green);}
+.ti.soon{color:var(--orange);}.ti.soon b{color:var(--orange);}
+.ti .tdot{width:5px;height:5px;border-radius:50%;flex-shrink:0;background:currentColor;}
+.ti.live .tdot{animation:blink 1.2s ease-in-out infinite;}
+
+/* ══ FRAMES ══ */
+#frames{position:fixed;top:calc(var(--bar-h) + var(--tick-h));left:0;right:0;bottom:var(--nav-h);}
+.fw{position:absolute;inset:0;display:none;flex-direction:column;}
+.fw.active{display:flex;}
+.fw iframe{flex:1;width:100%;border:none;background:#fff;}
+.loader{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:10;transition:opacity .45s;}
+.loader.hidden{opacity:0;pointer-events:none;}
+.loader .ring{width:44px;height:44px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--gold);animation:spin .85s linear infinite;}
+.loader p{font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:1.8px;text-transform:uppercase;color:var(--muted);}
+.loader small{font-size:10px;color:rgba(74,85,112,.55);}
+
+/* ══ SYNC OVERLAY ══ */
+#sovl{
+  position:fixed;top:calc(var(--bar-h) + var(--tick-h));left:0;right:0;bottom:var(--nav-h);
+  background:rgba(8,10,14,.9);z-index:250;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;
+  opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(6px);
+}
+#sovl.show{opacity:1;pointer-events:all;}
+#sovl .sring{width:56px;height:56px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .75s linear infinite;}
+#sovl .smsg{font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-align:center;padding:0 20px;}
+#sovl small{font-size:10px;color:var(--muted);}
+#chip-wrap{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;max-width:290px;}
+.chip{font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:.6px;padding:3px 10px;border-radius:20px;background:rgba(245,200,66,.05);border:1px solid rgba(245,200,66,.12);color:var(--muted);transition:all .4s;}
+.chip.loading{border-color:rgba(245,200,66,.4);color:var(--gold);background:rgba(245,200,66,.08);}
+.chip.done{background:rgba(46,204,113,.1);border-color:rgba(46,204,113,.3);color:var(--green);}
+
+/* ══ BOTTOM NAV ══ */
+#mnav{
+  display:flex;position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);
+  background:linear-gradient(180deg,var(--surface) 0%,#0b0e14 100%);
+  border-top:1px solid var(--border);z-index:300;
+}
+.mb{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;cursor:pointer;font-family:'Oswald',sans-serif;
+  font-size:7.5px;letter-spacing:.3px;text-transform:uppercase;
+  color:var(--muted);user-select:none;transition:color .2s;position:relative;
+}
+.mb::after{content:'';position:absolute;top:0;left:25%;right:25%;height:2px;background:currentColor;border-radius:0 0 4px 4px;transform:scaleX(0);transition:transform .2s ease;}
+.mb.active::after{transform:scaleX(1);}
+.mi{font-size:16px;line-height:1.1;}
+.mb[data-t="0"].active{color:var(--gold);}
+.mb[data-t="1"].active{color:var(--red);}
+.mb[data-t="2"].active{color:var(--blue);}
+.mb[data-t="3"].active{color:var(--green);}
+.mb[data-t="4"].active{color:var(--orange);}
+.mb[data-t="5"].active{color:var(--purple);}
+.nbdg{position:absolute;top:5px;right:calc(50% - 14px);width:7px;height:7px;border-radius:50%;background:var(--green);border:1.5px solid var(--bg);display:none;animation:blink 1.5s ease-in-out infinite;}
+.nbdg.show{display:block;}
+
+/* ══ TOAST ══ */
+#toast-wrap{position:fixed;top:calc(var(--bar-h)+var(--tick-h)+8px);left:50%;transform:translateX(-50%);z-index:500;display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;}
+.toast{font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:.7px;text-transform:uppercase;padding:6px 13px;border-radius:20px;display:flex;align-items:center;gap:5px;pointer-events:none;white-space:nowrap;animation:tin .2s ease forwards;backdrop-filter:blur(8px);}
+.toast.out{animation:tout .2s ease forwards;}
+.toast.ok  {background:rgba(46,204,113,.14);border:1px solid rgba(46,204,113,.3);color:var(--green);}
+.toast.info{background:rgba(245,200,66,.12);border:1px solid rgba(245,200,66,.25);color:var(--gold);}
+.toast.warn{background:rgba(224,60,60,.12);border:1px solid rgba(224,60,60,.3);color:var(--red);}
+@keyframes tin{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes tout{from{opacity:1}to{opacity:0;transform:translateY(-5px)}}
+
+/* ══ SCHEDULE PILL ══ */
+#spill{position:fixed;bottom:calc(var(--nav-h)+8px);right:8px;z-index:280;}
+#spill-btn{width:38px;height:38px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(0,0,0,.55);transition:all .2s;}
+#spill-btn:active{color:var(--gold);border-color:rgba(245,200,66,.3);}
+#spanel{position:absolute;bottom:46px;right:0;width:268px;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:11px;box-shadow:0 8px 40px rgba(0,0,0,.7);display:none;animation:panelin .18s ease;max-height:380px;overflow-y:auto;}
+#spanel.open{display:block;}
+@keyframes panelin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#spanel h4{font-family:'Oswald',sans-serif;font-size:9.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);padding-bottom:7px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+#s-tot{color:var(--gold);}
+.sg{font-family:'Oswald',sans-serif;font-size:8.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);padding:7px 0 3px;opacity:.65;}
+.sr{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(26,31,46,.5);}
+.sr:last-child{border-bottom:none;}
+.sr-left{font-family:'Oswald',sans-serif;font-size:12px;color:var(--text);display:flex;align-items:center;gap:5px;}
+.sr-right{text-align:right;}
+.sr-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);}
+.sr-cd{font-family:'Barlow',sans-serif;font-size:10px;color:var(--muted);}
+.s-live{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);animation:blink 1.4s infinite;flex-shrink:0;}
+.s-soon{width:6px;height:6px;border-radius:50%;background:var(--orange);box-shadow:0 0 5px var(--orange);flex-shrink:0;}
+.s-idle{width:6px;height:6px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.s-off {width:6px;height:6px;border-radius:50%;background:rgba(74,85,112,.3);flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══ -->
+<div id="topbar">
+  <div id="logo">
+    <div id="logo-ring"><div id="logo-dot"></div></div>
+    <div>
+      <div id="logo-txt">WB PRED</div>
+      <div id="logo-sub">AUTO SYNC</div>
+    </div>
+  </div>
+  <div id="strip">
+    <div id="clk"><b id="ck-t">--:--:--</b></div>
+    <div id="cdbox">
+      <span id="cd-m">---</span>&nbsp;
+      <span id="cd-t">--:--:--</span>
+    </div>
+    <div id="sdot-wrap">
+      <div id="sdot"></div>
+      <span id="slbl">LIVE</span>
+    </div>
+  </div>
+  <button id="btn-rf" onclick="manualRefresh()" title="Refresh semua fitur">
+    <span class="rfi">🔄</span><span id="rbadge"></span>
+  </button>
+</div>
+
+<!-- ═══ LIVE TICKER ═══ -->
+<div id="ticker"><div id="tick-inner"></div></div>
+
+<!-- ═══ TOAST ═══ -->
+<div id="toast-wrap"></div>
+
+<!-- ═══ SYNC OVERLAY ═══ -->
+<div id="sovl">
+  <div class="sring"></div>
+  <p class="smsg" id="sovl-msg">Sinkronisasi semua fitur…</p>
+  <div id="chip-wrap"></div>
+  <small>Semua halaman diperbarui bersamaan</small>
+</div>
+
+<!-- ═══ IFRAME FRAMES ═══ -->
+<div id="frames">
+  <div class="fw active" id="fw0">
+    <div class="loader" id="ld0"><div class="ring"></div><p>Memuat Rumus Otomatis…</p><small>Harap tunggu</small></div>
+    <iframe id="if0" title="Rumus Otomatis"></iframe>
+  </div>
+  <div class="fw" id="fw1">
+    <div class="loader" id="ld1"><div class="ring"></div><p>Memuat Rumus Lengkap…</p><small>Harap tunggu</small></div>
+    <iframe id="if1" title="Rumus Lengkap"></iframe>
+  </div>
+  <div class="fw" id="fw2">
+    <div class="loader" id="ld2"><div class="ring"></div><p>Memuat Scanner Rumus…</p><small>Harap tunggu</small></div>
+    <iframe id="if2" title="Scanner Rumus"></iframe>
+  </div>
+  <div class="fw" id="fw3">
+    <div class="loader" id="ld3"><div class="ring"></div><p>Memuat Paito Warna…</p><small>Harap tunggu</small></div>
+    <iframe id="if3" title="Paito Warna"></iframe>
+  </div>
+  <div class="fw" id="fw4">
+    <div class="loader" id="ld4"><div class="ring"></div><p>Memuat Smart Paito…</p><small>Harap tunggu</small></div>
+    <iframe id="if4" title="Smart Paito"></iframe>
+  </div>
+  <div class="fw" id="fw5">
+    <div class="loader" id="ld5"><div class="ring"></div><p>Memuat Data Togel…</p><small>Harap tunggu</small></div>
+    <iframe id="if5" title="Data Togel"></iframe>
+  </div>
+</div>
+
+<!-- ═══ BOTTOM NAV ═══ -->
+<div id="mnav">
+  <div class="mb active" data-t="0" onclick="goTab(0)">
+    <span class="mi">⚡</span>Otomatis
+    <span class="nbdg" id="nbdg0"></span>
+  </div>
+  <div class="mb" data-t="1" onclick="goTab(1)">
+    <span class="mi">📐</span>Rumus
+    <span class="nbdg" id="nbdg1"></span>
+  </div>
+  <div class="mb" data-t="2" onclick="goTab(2)">
+    <span class="mi">🔍</span>Scanner
+    <span class="nbdg" id="nbdg2"></span>
+  </div>
+  <div class="mb" data-t="3" onclick="goTab(3)">
+    <span class="mi">🎨</span>Paito
+    <span class="nbdg" id="nbdg3"></span>
+  </div>
+  <div class="mb" data-t="4" onclick="goTab(4)">
+    <span class="mi">🧠</span>Smart
+    <span class="nbdg" id="nbdg4"></span>
+  </div>
+  <div class="mb" data-t="5" onclick="goTab(5)">
+    <span class="mi">📊</span>Data
+    <span class="nbdg" id="nbdg5"></span>
+  </div>
+</div>
+
+<!-- ═══ FLOATING SCHEDULE BUTTON ═══ -->
+<div id="spill">
+  <button id="spill-btn" onclick="toggleSch()" title="Jadwal semua pasaran">📅</button>
+  <div id="spanel">
+    <h4>🕐 JADWAL PASARAN <span id="s-tot"></span></h4>
+    <div id="s-list"></div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   KONFIGURASI HALAMAN
+   Path relatif → file di GitHub Pages repo
+════════════════════════════════════════════════════ */
+var PAGES = [
+  'Rumus_Otomatis.html',   // Tab 0 ⚡
+  'Rumus_Lengkap.html',    // Tab 1 📐
+  'Scanner_Rumus.html',    // Tab 2 🔍
+  'Paito_Warna.html',      // Tab 3 🎨
+  'Smart_Paito.html',      // Tab 4 🧠
+  'DataTogel.html'         // Tab 5 📊
+];
+var FNAMES = ['Otomatis','Rumus','Scanner','Paito','Smart','Data'];
+
+/* ════════════════════════════════════════════════════
+   JADWAL SEMUA PASARAN (WIB = UTC+7)
+   days: [0=Min,1=Sen,2=Sel,3=Rab,4=Kam,5=Jum,6=Sab]
+   Tidak ada days = aktif setiap hari
+════════════════════════════════════════════════════ */
+var SCHED = [
+  {group:'🌅 Pagi'},
+  {name:'Cambodia',    emoji:'🇰🇭', H:12, M:0  },
+  {name:'Japan',       emoji:'🇯🇵', H:12, M:30 },
+  {name:'SDY',         emoji:'🦘',  H:13, M:55 },
+  {name:'China',       emoji:'🇨🇳', H:14, M:0  },
+  {name:'Taiwan',      emoji:'🇹🇼', H:14, M:30 },
+  {name:'NC Day',      emoji:'🌐',  H:14, M:45 },
+  {group:'☀️ Siang'},
+  {name:'Korea',       emoji:'🇰🇷', H:17, M:0  },
+  {name:'SGP',         emoji:'🦁',  H:17, M:45, days:[0,1,3,4,6]},
+  {name:'Bangkok',     emoji:'🇹🇭', H:18, M:0  },
+  {name:'Vietnam',     emoji:'🇻🇳', H:18, M:30 },
+  {name:'Malaysia',    emoji:'🇲🇾', H:19, M:0,  days:[3,6]},
+  {name:'New Zealand', emoji:'🥝',  H:19, M:30 },
+  {group:'🌙 Malam'},
+  {name:'Macau',       emoji:'🎰',  H:20, M:0  },
+  {name:'PCSO',        emoji:'🇵🇭', H:21, M:0  },
+  {name:'Taiwan PM',   emoji:'🇹🇼', H:21, M:30 },
+  {name:'HK',          emoji:'🔴',  H:23, M:0  }
+];
+
+/* ════════════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════════ */
+var loaded    = {};   // Tab sudah di-load
+var cur       = 0;    // Tab aktif sekarang
+var triggered = {};   // Pasaran sudah auto-trigger hari ini
+var isSyncing = false;
+
+/* ════════════════════════════════════════════════════
+   UTILS
+════════════════════════════════════════════════════ */
+function pad(n){ return String(n).padStart(2,'0'); }
+
+function getWIB(){
+  var n = new Date();
+  // Konversi ke WIB (UTC+7)
+  return new Date(n.getTime() + (7*60 - n.getTimezoneOffset()) * 60000);
+}
+
+function markets(){
+  return SCHED.filter(function(s){ return !s.group; });
+}
+
+/* ════════════════════════════════════════════════════
+   FRAME LOADER — load iframe dengan cache-bust
+════════════════════════════════════════════════════ */
+function loadFrame(i){
+  if(loaded[i]) return;
+  loaded[i] = true;
+  var fr = document.getElementById('if'+i);
+  (function(idx){
+    fr.onload = function(){
+      var ld = document.getElementById('ld'+idx);
+      if(ld){
+        ld.classList.add('hidden');
+        setTimeout(function(){ if(ld.parentNode) ld.remove(); }, 500);
+      }
+    };
+  })(i);
+  fr.src = PAGES[i] + '?_t=' + Date.now();
+}
+
+/* ════════════════════════════════════════════════════
+   NAVIGASI TAB
+════════════════════════════════════════════════════ */
+function goTab(idx){
+  if(idx === cur) return;
+  // Update nav
+  document.querySelectorAll('#mnav .mb').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelector('#mnav .mb[data-t="'+idx+'"]').classList.add('active');
+  // Ganti frame
+  document.getElementById('fw'+cur).classList.remove('active');
+  document.getElementById('fw'+idx).classList.add('active');
+  cur = idx;
+  loadFrame(idx);
+  // Hapus badge notif tab ini
+  var bdg = document.getElementById('nbdg'+idx);
+  if(bdg) bdg.classList.remove('show');
+}
+
+/* ════════════════════════════════════════════════════
+   SYNC SEMUA FITUR — reload semua iframe bersamaan
+════════════════════════════════════════════════════ */
+function syncAll(label){
+  if(isSyncing) return;
+  isSyncing = true;
+
+  // Aktifkan indikator
+  document.getElementById('sdot').classList.add('syncing');
+  document.getElementById('slbl').textContent = 'SYNC…';
+  document.getElementById('btn-rf').classList.add('spinning');
+  document.getElementById('sovl-msg').textContent = label || 'Sinkronisasi semua fitur…';
+
+  // Buat chips per fitur
+  var cw = document.getElementById('chip-wrap'); cw.innerHTML = '';
+  FNAMES.forEach(function(n, i){
+    var c = document.createElement('div');
+    c.className = 'chip'; c.id = 'chip-'+i; c.textContent = n;
+    cw.appendChild(c);
+  });
+  document.getElementById('sovl').classList.add('show');
+
+  var doneCount = 0;
+  var total = PAGES.length;
+
+  PAGES.forEach(function(_, i){
+    loaded[i] = false;
+    setTimeout(function(){
+      // Chip loading state
+      var chip = document.getElementById('chip-'+i);
+      if(chip) chip.classList.add('loading');
+
+      var fr = document.getElementById('if'+i);
+      var fw = document.getElementById('fw'+i);
+
+      // Tambah loader overlay ke frame
+      var oldLd = document.getElementById('ld'+i);
+      if(!oldLd){
+        var ld = document.createElement('div');
+        ld.className = 'loader'; ld.id = 'ld'+i;
+        ld.innerHTML = '<div class="ring"></div><p>Update '+FNAMES[i]+'…</p><small>Data terbaru</small>';
+        fw.insertBefore(ld, fr);
+      } else {
+        oldLd.classList.remove('hidden');
+        oldLd.querySelector('p').textContent = 'Update '+FNAMES[i]+'…';
+      }
+
+      // Reload iframe dengan cache-bust
+      (function(idx){
+        fr.onload = function(){
+          var ld2 = document.getElementById('ld'+idx);
+          if(ld2){
+            ld2.classList.add('hidden');
+            setTimeout(function(){ if(ld2.parentNode) ld2.remove(); }, 500);
+          }
+          // Chip done
+          var chip2 = document.getElementById('chip-'+idx);
+          if(chip2){ chip2.classList.remove('loading'); chip2.classList.add('done'); }
+          loaded[idx] = true;
+          // Badge di tab yang tidak aktif
+          if(idx !== cur){
+            var bdg = document.getElementById('nbdg'+idx);
+            if(bdg) bdg.classList.add('show');
+          }
+          // Cek apakah semua selesai
+          doneCount++;
+          if(doneCount >= total) finishSync();
+        };
+        fr.src = PAGES[idx] + '?_t=' + Date.now();
+      })(i);
+    }, i * 400);
+  });
+
+  // Fallback timeout jika ada iframe yang lambat
+  setTimeout(function(){ if(isSyncing) finishSync(); }, total * 400 + 5000);
+}
+
+function finishSync(){
+  if(!isSyncing) return;
+  isSyncing = false;
+  document.getElementById('sovl').classList.remove('show');
+  document.getElementById('btn-rf').classList.remove('spinning');
+  document.getElementById('sdot').classList.remove('syncing');
+  document.getElementById('slbl').textContent = 'LIVE';
+  showBadge();
+  buildTicker(getWIB());
+  showToast('✅ Semua fitur tersinkron!','ok',3000);
+}
+
+/* ════════════════════════════════════════════════════
+   MANUAL REFRESH
+════════════════════════════════════════════════════ */
+function manualRefresh(){
+  if(isSyncing){ showToast('⏳ Sedang sync…','info',1500); return; }
+  showToast('🔄 Refresh manual…','info',1800);
+  setTimeout(function(){ syncAll('🔄 Refresh Manual'); }, 300);
+}
+
+/* ════════════════════════════════════════════════════
+   BADGE (tombol refresh)
+════════════════════════════════════════════════════ */
+function showBadge(){
+  var b = document.getElementById('rbadge');
+  b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
+  setTimeout(function(){ b.classList.remove('show'); }, 5000);
+}
+
+/* ════════════════════════════════════════════════════
+   LIVE TICKER — berjalan di bawah topbar
+════════════════════════════════════════════════════ */
+function buildTicker(wib){
+  var nowMin = wib.getHours()*60 + wib.getMinutes();
+  var day    = wib.getDay();
+  var parts  = [];
+
+  markets().forEach(function(s){
+    var dayOk = !s.days || s.days.indexOf(day) >= 0;
+    if(!dayOk) return;   // Tidak tampil di ticker jika tidak aktif hari ini
+    var rMin = s.H*60 + s.M;
+    var diff = rMin - nowMin;
+    var cls='', cdTxt='';
+    if     (diff<=0 && diff>-10){ cls='live'; cdTxt='BARU KELUAR!'; }
+    else if(diff>0 && diff<=30) { cls='soon'; cdTxt='±'+diff+'m'; }
+    else if(diff>0){
+      var h=Math.floor(diff/60), m=diff%60;
+      cdTxt = (h ? h+'j ' : '')+m+'m';
+    } else { cdTxt='✓'; }
+    parts.push({s:s, cls:cls, cdTxt:cdTxt});
+  });
+
+  // Duplikat untuk scroll mulus tanpa putus
+  var html = '';
+  [parts, parts].forEach(function(arr){
+    arr.forEach(function(p){
+      html += '<span class="ti'+(p.cls?' '+p.cls:'')+'">';
+      html += '<span class="tdot"></span>';
+      html += p.s.emoji+' <b>'+p.s.name+'</b> '+pad(p.s.H)+':'+pad(p.s.M)+' — '+p.cdTxt;
+      html += '</span>';
+    });
+  });
+  var ti = document.getElementById('tick-inner');
+  ti.innerHTML = html || '<span class="ti">📅 Tidak ada pasaran aktif hari ini</span>';
+}
+
+/* ════════════════════════════════════════════════════
+   SCHEDULE PANEL (floating button 📅)
+════════════════════════════════════════════════════ */
+function toggleSch(){
+  var p = document.getElementById('spanel');
+  p.classList.toggle('open');
+  if(p.classList.contains('open')) renderSch(getWIB());
+}
+
+// Tutup panel klik di luar
+document.addEventListener('click', function(e){
+  var pill = document.getElementById('spill');
+  if(!pill.contains(e.target)) document.getElementById('spanel').classList.remove('open');
+});
+
+function renderSch(wib){
+  var list   = document.getElementById('s-list'); list.innerHTML = '';
+  var nowMin = wib.getHours()*60 + wib.getMinutes();
+  var day    = wib.getDay();
+  var total  = 0;
+
+  SCHED.forEach(function(s){
+    if(s.group){
+      var g = document.createElement('div'); g.className='sg'; g.textContent=s.group;
+      list.appendChild(g); return;
+    }
+    total++;
+    var dayOk = !s.days || s.days.indexOf(day) >= 0;
+    var rMin  = s.H*60 + s.M;
+    var diff  = rMin - nowMin;
+    var dotCls, cdTxt;
+
+    if(!dayOk)               { dotCls='s-off';  cdTxt='Tidak hari ini'; }
+    else if(diff<=0&&diff>-10){ dotCls='s-live'; cdTxt='🔔 Baru keluar!'; }
+    else if(diff>0&&diff<=30) { dotCls='s-soon'; cdTxt='Sebentar lagi!'; }
+    else if(diff>0){
+      var h=Math.floor(diff/60), m=diff%60;
+      dotCls='s-idle'; cdTxt=(h?h+'j ':'')+m+'m lagi';
+    } else { dotCls='s-idle'; cdTxt='Sudah keluar'; }
+
+    var row = document.createElement('div'); row.className='sr';
+    row.innerHTML =
+      '<div class="sr-left"><div class="'+dotCls+'"></div>'+s.emoji+' '+s.name+'</div>'+
+      '<div class="sr-right">'+
+        '<div class="sr-time">'+pad(s.H)+':'+pad(s.M)+' WIB</div>'+
+        '<div class="sr-cd">'+cdTxt+'</div>'+
+      '</div>';
+    list.appendChild(row);
+  });
+  document.getElementById('s-tot').textContent = '('+total+')';
+}
+
+/* ════════════════════════════════════════════════════
+   AUTO-REFRESH CHECKER
+   Dicek setiap detik → saat jam pasaran = syncAll
+════════════════════════════════════════════════════ */
+function checkAuto(wib){
+  // Hanya proses di detik 0–8 (buffer aman)
+  if(wib.getSeconds() > 8) return;
+
+  var h   = wib.getHours();
+  var m   = wib.getMinutes();
+  var day = wib.getDay();
+  var dk  = wib.toDateString();   // Key unik per hari
+
+  markets().forEach(function(s){
+    var dayOk = !s.days || s.days.indexOf(day) >= 0;
+    if(!dayOk) return;
+    if(h === s.H && m === s.M){
+      var key = s.name + '_' + dk;
+      if(!triggered[key]){
+        triggered[key] = true;
+        // Notifikasi
+        showToast('🔔 '+s.emoji+' '+s.name+' KELUAR! Auto sync…','warn',5000);
+        // Auto-sync semua fitur setelah 1.5 detik
+        setTimeout(function(){
+          syncAll(s.emoji+' '+s.name+' Keluar — Update Data Real');
+        }, 1500);
+      }
+    }
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   COUNTDOWN → pasaran berikutnya
+════════════════════════════════════════════════════ */
+function getNext(wib){
+  var nowSec = wib.getHours()*3600 + wib.getMinutes()*60 + wib.getSeconds();
+  var day    = wib.getDay();
+  var best = null, bestDiff = Infinity;
+
+  markets().forEach(function(s){
+    // Hari ini
+    var dayOk = !s.days || s.days.indexOf(day) >= 0;
+    if(dayOk){
+      var rSec = s.H*3600 + s.M*60;
+      var diff = rSec - nowSec;
+      if(diff > 0 && diff < bestDiff){ bestDiff=diff; best=s; }
+    }
+    // Hari-hari berikutnya (maks 7 hari)
+    for(var d=1; d<=7; d++){
+      var nDay = (day+d)%7;
+      var nOk  = !s.days || s.days.indexOf(nDay) >= 0;
+      if(nOk){
+        var diff2 = (s.H*3600+s.M*60) + d*86400 - nowSec;
+        if(diff2 > 0 && diff2 < bestDiff){ bestDiff=diff2; best=s; break; }
+      }
+    }
+  });
+  return {p:best, sec:bestDiff};
+}
+
+/* ════════════════════════════════════════════════════
+   TOAST NOTIFICATION
+════════════════════════════════════════════════════ */
+function showToast(msg, type, dur){
+  type=type||'info'; dur=dur||3000;
+  var wrap = document.getElementById('toast-wrap');
+  var el   = document.createElement('div');
+  el.className = 'toast '+type; el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(function(){
+    el.classList.add('out');
+    setTimeout(function(){ if(el.parentNode) el.remove(); }, 250);
+  }, dur);
+}
+
+/* ════════════════════════════════════════════════════
+   TICK — dijalankan setiap 1 detik
+════════════════════════════════════════════════════ */
+var _tickerBuilt = false;
+
+function tick(){
+  var wib = getWIB();
+
+  // ─ Jam WIB ─
+  document.getElementById('ck-t').textContent =
+    pad(wib.getHours())+':'+pad(wib.getMinutes())+':'+pad(wib.getSeconds());
+
+  // ─ Countdown pasaran berikutnya ─
+  var nx    = getNext(wib);
+  var cdbox = document.getElementById('cdbox');
+  if(nx.p){
+    var h=Math.floor(nx.sec/3600), m=Math.floor((nx.sec%3600)/60), s=nx.sec%60;
+    document.getElementById('cd-m').textContent = nx.p.emoji+' '+nx.p.name;
+    document.getElementById('cd-t').textContent = pad(h)+':'+pad(m)+':'+pad(s);
+    cdbox.classList.toggle('urgent', nx.sec < 300);
+  }
+
+  // ─ Auto trigger cek ─
+  checkAuto(wib);
+
+  // ─ Update schedule panel jika terbuka ─
+  if(document.getElementById('spanel').classList.contains('open')) renderSch(wib);
+
+  // ─ Rebuild ticker setiap menit atau pertama kali ─
+  if(!_tickerBuilt || (wib.getSeconds()===0 && wib.getMinutes()%1===0)){
+    buildTicker(wib); _tickerBuilt=true;
+  }
+
+  setTimeout(tick, 1000);
+}
+
+/* ════════════════════════════════════════════════════
+   INISIALISASI
+════════════════════════════════════════════════════ */
+
+// 1. Load tab pertama langsung
+loadFrame(0);
+
+// 2. Mulai timer
+tick();
+
+// 3. Toast sambutan
+setTimeout(function(){
+  var total = markets().length;
+  showToast('⚡ Auto-sync aktif — '+total+' pasaran terjadwal','info',4000);
+}, 800);
+
+// 4. Preload semua tab di background (satu per satu, tidak membebani)
+//    Jeda 2 detik antar tab agar tab aktif prioritas
+setTimeout(function(){ loadFrame(1); }, 2000);
+setTimeout(function(){ loadFrame(2); }, 4000);
+setTimeout(function(){ loadFrame(3); }, 6000);
+setTimeout(function(){ loadFrame(4); }, 8000);
+setTimeout(function(){ loadFrame(5); }, 10000);
+</script>
+</body>
+</html>
