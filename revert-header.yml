@@ -1,0 +1,26 @@
+name: Revert Header Inject
+
+on:
+  workflow_dispatch:
+
+jobs:
+  revert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Hapus inject header.js dari semua HTML
+        run: |
+          for file in *.html; do
+            sed -i 's|<script src="header.js"></script>||g' "$file"
+            echo "✅ Reverted: $file"
+          done
+
+      - name: Commit perubahan
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add *.html
+          git diff --staged --quiet || git commit -m "Revert: hapus inject header.js"
+          git push
