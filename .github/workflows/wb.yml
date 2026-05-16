@@ -1,6 +1,8 @@
 name: WB Header
 on:
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   run:
     runs-on: ubuntu-latest
