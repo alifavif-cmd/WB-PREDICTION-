@@ -6,18 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: |
-          python3 -c "
-          import os
-          tag = '<script src=\"header.js\"></script>'
-          files = ['Rumus_Otomatis.html','Rumus_Lengkap.html','Scanner_Rumus.html','Smart_Paito.html','DataTogel.html','Paito_Warna.html']
-          for f in files:
-            if not os.path.exists(f): continue
-            c = open(f,encoding='utf-8',errors='ignore').read()
-            if tag in c: continue
-            open(f,'w',encoding='utf-8').write(c.replace('</body>',tag+'\n</body>',1))
-            print('OK',f)
-          "
+      - run: python3 inject.py
       - run: |
           git config user.name "bot"
           git config user.email "bot@x.com"
